@@ -140,7 +140,6 @@
     <ClCompile Include="WindgedEdge.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="compile.bat" />
     <None Include="shaders\shader.frag" />
     <None Include="shaders\shader.vert" />
   </ItemGroup>
@@ -148,6 +147,50 @@
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Controller.h" />
     <ClInclude Include="WingedEdge.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="shaders\compile.bat" />
+    <Content Include="textures\Car\280z_Brakes_AO.png" />
+    <Content Include="textures\Car\280z_Brakes_Color.png" />
+    <Content Include="textures\Car\280z_Brakes_Normal.png" />
+    <Content Include="textures\Car\280z_Brakes_Roughness.png" />
+    <Content Include="textures\Car\280z_CarPaint_AO.png" />
+    <Content Include="textures\Car\280z_Chrome_AO.png" />
+    <Content Include="textures\Car\280z_Lens_Color.png" />
+    <Content Include="textures\Car\280z_Lens_Normal.png" />
+    <Content Include="textures\Car\280z_Plastic_AO.png" />
+    <Content Include="textures\Car\Brake_lamp_Color.png" />
+    <Content Include="textures\Car\Brake_lamp_Emission.png" />
+    <Content Include="textures\Car\Carbon_AO.png" />
+    <Content Include="textures\Car\Carbon_Color.png" />
+    <Content Include="textures\Car\Carbon_Normal.png" />
+    <Content Include="textures\Car\Carbon_Roughness.png" />
+    <Content Include="textures\Car\Headlight_lamp_Color.png" />
+    <Content Include="textures\Car\internal_ground_ao_texture.jpeg" />
+    <Content Include="textures\Car\Reverse_lamp_Color.png" />
+    <Content Include="textures\Car\Reverse_lamp_Emission.png" />
+    <Content Include="textures\Car\SSR_AO.png" />
+    <Content Include="textures\Car\SSR_Clearcoat_Normal.png" />
+    <Content Include="textures\Car\SSR_Clearcoat_Roughness.png" />
+    <Content Include="textures\Car\SSR_Color_alternative.png" />
+    <Content Include="textures\Car\SSR_Normal.png" />
+    <Content Include="textures\Car\SSR_Roughness.png" />
+    <Content Include="textures\Car\SSR_Tire_AO.png" />
+    <Content Include="textures\Car\SSR_Tire_Color.png" />
+    <Content Include="textures\Car\SSR_Tire_Normal.png" />
+    <Content Include="textures\Car\SSR_Tire_Roughness.png" />
+    <Content Include="textures\Car\Textures_AO.png" />
+    <Content Include="textures\Car\Textures_color.png" />
+    <Content Include="textures\Car\Textures_normal.png" />
+    <Content Include="textures\Car\Turnsignal_lamp_Color.png" />
+    <Content Include="textures\Car\Turnsignal_lamp_Emission.png" />
+    <Content Include="textures\texture.jpg" />
+    <Content Include="textures\viking_room\viking_room.png" />
+    <Content Include="textures\YF-23\internal_ground_ao_texture.jpeg" />
+    <Content Include="textures\YF-23\yf23_yf23-airframe_BaseColorFinal.png" />
+    <Content Include="textures\YF-23\yf23_yf23-airframe_Metallic-yf23_yf23-airframe_Roughness@cha.png" />
+    <Content Include="textures\YF-23\yf23_yf23-airframe_Metallic-yf23_yf23-airframe_Roughness@cha_1.png" />
+    <Content Include="textures\YF-23\yf23_yf23-airframe_Normal.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

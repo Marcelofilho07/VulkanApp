@@ -23,6 +23,7 @@
 #include <set>
 #include <array>
 #include "Camera.h"
+#include "WingedEdge.h"
 
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -45,51 +46,13 @@ struct UniformBufferObject {
     glm::mat4 proj;
 };
 
-struct Vertex {
-    glm::vec3 pos;
-    glm::vec3 color;
-    glm::vec2 texCoord;
 
-    static VkVertexInputBindingDescription getBindingDescription() {
-        VkVertexInputBindingDescription bindingDescription{};
-        bindingDescription.binding = 0;
-        bindingDescription.stride = sizeof(Vertex);
-        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        return bindingDescription;
-    }
 
-    static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
-        std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
-
-        attributeDescriptions[0].binding = 0;
-        attributeDescriptions[0].location = 0;
-        attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-        attributeDescriptions[1].binding = 0;
-        attributeDescriptions[1].location = 1;
-        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-        attributeDescriptions[2].binding = 0;
-        attributeDescriptions[2].location = 2;
-        attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-        attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
-
-        return attributeDescriptions;
-    }
-
-    bool operator==(const Vertex& other) const {
-        return pos == other.pos && color == other.color && texCoord == other.texCoord;
-    }
-};
 
 namespace std {
     template<> struct hash<Vertex> {
         size_t operator()(Vertex const& vertex) const {
-            return ((hash<glm::vec3>()(vertex.pos) ^
-                (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
-                (hash<glm::vec2>()(vertex.texCoord) << 1);
+            return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^(hash<glm::vec2>()(vertex.texCoord) << 1);
         }
     };
 }
@@ -137,14 +100,16 @@ private:
     const uint32_t HEIGHT = 600;
 
     //const std::string MODEL_PATH = "models/viking_room/viking_room.obj";
+    //const std::string MODEL_PATH = "models/viking_room/viking_room2.obj";
     const std::string TEXTURE_PATH = "textures/viking_room/viking_room.png";
     //const std::string MODEL_PATH = "models/YF-23/_YF-23_full_type1.obj";
     //const std::string MODEL_PATH = "models/YF-23/YF-23_separate_body.obj";
     //const std::string TEXTURE_PATH = "textures/YF-23/yf23_yf23-airframe_BaseColorFinal.png";
     //const std::string MODEL_PATH = "models/backpack/backpack.obj";
     //const std::string TEXTURE_PATH = "models/backpack/diffuse.jpg";
-    const std::string MODEL_PATH = "models/Car/Datsun_280Z.obj";
+    //const std::string MODEL_PATH = "models/Car/Datsun_280Z.obj";
     //const std::string MODEL_PATH = "models/Shapes/tetrahedron.obj";
+    const std::string MODEL_PATH = "models/Shapes/tetrahedron2.obj";
 
 
     const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" };
@@ -187,6 +152,7 @@ private:
     std::vector<VkFence> inFlightFences;
     uint32_t currentFrame = 0;
     std::vector<Vertex> vertices;
+    std::vector<Vertex> verticesOriginal;
     std::vector<uint32_t> indices;
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
@@ -321,23 +287,13 @@ private:
         tinyobj::ObjReaderConfig reader_config;
         tinyobj::ObjReader reader;
 
-        //if (!reader.ParseFromFile(MODEL_PATH.c_str(), reader_config))
-        //{
-        //    throw std::runtime_error(reader.Warning() + reader.Error());
-        //}
-
         if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str())) {
             throw std::runtime_error(warn + err);
         }
 
         std::unordered_map<Vertex, uint32_t> uniqueVertices{};
         std::cout << "LoadObj Finished" << std::endl;
-        float r = 0.f;
-        float g = 1.f;
-        float b = 0.f;
-        float count = 10.f;
         for (const auto& shape : shapes) {
-            float s = count / static_cast<float>(shape.mesh.indices.size());
             for (const auto& index : shape.mesh.indices) {
                 Vertex vertex{};
 
@@ -347,17 +303,13 @@ private:
                     attrib.vertices[3 * index.vertex_index + 2]
                 };
 
-                /*vertex.texCoord = {
-                    attrib.texcoords[2 * index.texcoord_index + 0],
-                    attrib.texcoords[2 * index.texcoord_index + 1]
-                };
+                // vertex.texCoord = {
+                //     attrib.texcoords[2 * index.texcoord_index + 0],
+                //     attrib.texcoords[2 * index.texcoord_index + 1]
+                // };
 
-                vertex.color = { 1.0f, 1.0f, 1.0f };*/
+                vertex.color = { 1.0f, 1.0f, 1.0f };
 
-                vertex.color = { r,g,b/2.f };
-                r += s;
-                g -= s;
-                b += s;
                 if (uniqueVertices.count(vertex) == 0) {
                     uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
                     vertices.push_back(vertex);
@@ -367,7 +319,25 @@ private:
             }
         }
 
-        std::cout << "Vertex Populated" << std::endl;
+        verticesOriginal = vertices;
+        
+        Vertex testV{};
+        testV.pos = {1.f,0.f,0.f};
+        testV.color = {1.f,1.f,1.f};
+        testV.texCoord = {1.f,1.f};
+        //vertices.push_back(testV);
+        for(auto v : vertices)
+        {
+            std::cout << v.pos.x << ' '<< v.pos.y << ' '<< v.pos.z << std::endl;
+        }
+        // for(auto v : indices)
+        // {
+        //     std::cout << v << std::endl;
+        // }
+
+        
+        generateConvexHull();
+        
     }
 
     void createDepthResources()
@@ -962,8 +932,7 @@ private:
             throw std::runtime_error("failed to create command pool!");
         }
     }
-
-
+    
     void createFramebuffers()
     {
         swapChainFramebuffers.resize(swapChainImageViews.size());
@@ -1067,7 +1036,7 @@ private:
         rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
         //rasterizer.polygonMode = VK_POLYGON_MODE_POINT;
         rasterizer.lineWidth = 1.0f; 
-        rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+        rasterizer.cullMode = VK_CULL_MODE_NONE;
         rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         rasterizer.depthBiasEnable = VK_FALSE;
         rasterizer.depthBiasConstantFactor = 0.0f; // Optional
@@ -1851,6 +1820,296 @@ private:
 
         glfwDestroyWindow(window);
         glfwTerminate();
+    }
+
+    void generateConvexHull()
+    {
+        Vertex v1 = findLowestPoint(verticesOriginal);
+        WingedEdge we{};
+        
+        face proxyFace  = *genProxyFace(v1);
+        
+        Vertex newVertex00{};
+        newVertex00.pos = proxyFace.e0.destVec;
+        newVertex00.color = {1.f,0.0f,0.f};
+        newVertex00.texCoord = {1.f,1.f};
+        
+        Vertex newVertex01{};
+        newVertex01.pos = proxyFace.e1.destVec;
+        newVertex01.color = {0.f,1.0f,0.f};
+        newVertex01.texCoord = {1.f,1.f};
+
+        glm::vec3 secondConvexHullVertex = findVertexWithSmallestAngleBetweenFaces(proxyFace.e0, proxyFace, verticesOriginal);
+
+        
+        
+        face proxyFace01  = *genProxyFace02(v1.pos, secondConvexHullVertex);
+
+        glm::vec3 thirdConvexHullVertex = findVertexWithSmallestAngleBetweenFaces(proxyFace01.e2, proxyFace01, verticesOriginal);
+
+        we.genFace(v1.pos, secondConvexHullVertex, thirdConvexHullVertex);
+        //we.printFace(*firstTrueFace);
+        for(auto i = we.listFaces.begin(); i != we.listFaces.end(); ++i)
+        {
+            auto f = *i;
+            we.printFace(f);
+            if(f.e0.r_face == nullptr)
+            {
+                glm::vec3 nextPoint00 = findVertexWithSmallestAngleBetweenFaces(f.e0, f, verticesOriginal);
+                we.genFace(nextPoint00, f.e0.origVec, f.e0.destVec);
+            }
+        
+            if(f.e1.r_face == nullptr)
+            {
+                glm::vec3 nextPoint01 = findVertexWithSmallestAngleBetweenFaces(f.e1, f, verticesOriginal);
+                we.genFace(nextPoint01, f.e1.origVec, f.e1.destVec);
+            }
+        
+            if(f.e2.r_face == nullptr)
+            {
+                glm::vec3 nextPoint02 = findVertexWithSmallestAngleBetweenFaces(f.e2, f, verticesOriginal);
+                we.genFace(nextPoint02, f.e2.origVec, f.e2.destVec);
+            }
+        }
+        /*for(auto f : we.vectorFaces)
+        {
+            if(f.e0.r_face == nullptr)
+            {
+                glm::vec3 nextPoint00 = findVertexWithSmallestAngleBetweenFaces(f.e0, f, verticesOriginal);
+                we.genFace(nextPoint00, f.e0.origVec, f.e0.destVec);
+            }
+            
+            if(f.e1.r_face == nullptr)
+            {
+                glm::vec3 nextPoint01 = findVertexWithSmallestAngleBetweenFaces(f.e1, f, verticesOriginal);
+                we.genFace(nextPoint01, f.e1.origVec, f.e1.destVec);
+            }
+            
+            if(f.e2.r_face == nullptr)
+            {
+                glm::vec3 nextPoint02 = findVertexWithSmallestAngleBetweenFaces(f.e2, f, verticesOriginal);
+                we.genFace(nextPoint02, f.e2.origVec, f.e2.destVec);
+            }
+        }*/
+        
+        // for(auto f : we.faces)
+        // {
+        //     if(f.e0.r_face == nullptr)
+        //     {
+        //         glm::vec3 nextPoint00 = findVertexWithSmallestAngleBetweenFaces(f.e0, f, verticesOriginal);
+        //         we.genFace(nextPoint00, f.e0.origVec, f.e0.destVec);
+        //     }
+        //     
+        //     if(f.e1.r_face == nullptr)
+        //     {
+        //         glm::vec3 nextPoint01 = findVertexWithSmallestAngleBetweenFaces(f.e1, f, verticesOriginal);
+        //         we.genFace(nextPoint01, f.e1.origVec, f.e1.destVec);
+        //     }
+        //     
+        //     if(f.e2.r_face == nullptr)
+        //     {
+        //         glm::vec3 nextPoint02 = findVertexWithSmallestAngleBetweenFaces(f.e2, f, verticesOriginal);
+        //         we.genFace(nextPoint02, f.e2.origVec, f.e2.destVec);
+        //     }
+        // }
+        //
+        //
+        // for(auto f : we.faces)
+        // {
+        //     if(f.e0.r_face == nullptr)
+        //     {
+        //         glm::vec3 nextPoint00 = findVertexWithSmallestAngleBetweenFaces(f.e0, f, verticesOriginal);
+        //         we.genFace(nextPoint00, f.e0.origVec, f.e0.destVec);
+        //     }
+        //     
+        //     if(f.e1.r_face == nullptr)
+        //     {
+        //         glm::vec3 nextPoint01 = findVertexWithSmallestAngleBetweenFaces(f.e1, f, verticesOriginal);
+        //         we.genFace(nextPoint01, f.e1.origVec, f.e1.destVec);
+        //     }
+        //     
+        //     if(f.e2.r_face == nullptr)
+        //     {
+        //         glm::vec3 nextPoint02 = findVertexWithSmallestAngleBetweenFaces(f.e2, f, verticesOriginal);
+        //         we.genFace(nextPoint02, f.e2.origVec, f.e2.destVec);
+        //     }
+        // }
+        //
+        // for(auto f : we.faces)
+        // {
+        //     if(f.e0.r_face == nullptr)
+        //     {
+        //         glm::vec3 nextPoint00 = findVertexWithSmallestAngleBetweenFaces(f.e0, f, verticesOriginal);
+        //         we.genFace(nextPoint00, f.e0.origVec, f.e0.destVec);
+        //     }
+        //     
+        //     if(f.e1.r_face == nullptr)
+        //     {
+        //         glm::vec3 nextPoint01 = findVertexWithSmallestAngleBetweenFaces(f.e1, f, verticesOriginal);
+        //         we.genFace(nextPoint01, f.e1.origVec, f.e1.destVec);
+        //     }
+        //     
+        //     if(f.e2.r_face == nullptr)
+        //     {
+        //         glm::vec3 nextPoint02 = findVertexWithSmallestAngleBetweenFaces(f.e2, f, verticesOriginal);
+        //         we.genFace(nextPoint02, f.e2.origVec, f.e2.destVec);
+        //     }
+        // }
+
+        std::vector<uint32_t> newIndices{};
+        vertices = we.verticesVec;
+        // for(auto v : we.verticesVec)
+        // {
+        //     std::cout << "Vertex: " << v.pos.x << " " << v.pos.y << " " << v.pos.z << std::endl;
+        // }
+        for(auto f : we.faces)
+        {
+            
+            newIndices.push_back(we.uniqueVertices[f.e0.origVec] - 1);
+            newIndices.push_back(we.uniqueVertices[f.e1.origVec] - 1);
+            newIndices.push_back(we.uniqueVertices[f.e2.origVec] - 1);
+            //std::cout << "Vertex: " << f.e0.origVec.x << " " << f.e0.origVec.y << " " << f.e0.origVec.z << " Index: " << we.uniqueVertices[f.e0.origVec] - 1 << std::endl;
+            //std::cout << "Vertex: " << f.e1.origVec.x << " " << f.e1.origVec.y << " " << f.e1.origVec.z << " Index: " << we.uniqueVertices[f.e1.origVec] - 1 << std::endl;
+            //std::cout << "Vertex: " << f.e2.origVec.x << " " << f.e2.origVec.y << " " << f.e2.origVec.z << " Index: " << we.uniqueVertices[f.e2.origVec] - 1 << std::endl;
+        }
+        indices.clear();
+        indices = newIndices;
+    }
+
+    Vertex findLowestPoint(std::vector<Vertex> vertexList)
+    {
+        float lowest = vertexList[0].pos.y;
+        float current = lowest;
+        Vertex vertexToReturn{};
+        for(auto v : vertexList)
+        {
+            if(v.pos.y <= lowest)
+            {
+                current = v.pos.y;
+                vertexToReturn = v;
+            }
+        }
+
+        return vertexToReturn;
+    }
+
+    face* genProxyFace(Vertex v)
+    {
+        face* proxy = new face();
+        edge* e1 = new edge();
+        e1->origVec = v.pos;
+        e1->destVec = v.pos + glm::vec3{1.f, 0.f,0.f};
+        e1->l_face = proxy;
+        edge* e2 = new edge();
+        e2->origVec = v.pos + glm::vec3{1.f, 0.f,0.f};
+        e2->destVec = v.pos + glm::vec3{0.f, 0.f,1.f};
+        e2->l_face = proxy;
+        edge* e3 = new edge();
+        e3->origVec = v.pos + glm::vec3{0.f, 0.f,1.f};;
+        e3->destVec = v.pos;
+        e3->l_face = proxy;
+
+        proxy->e0 = *e1;
+        proxy->e1 = *e2;
+        proxy->e2 = *e3;
+
+        return proxy;
+    }
+
+    face* genProxyFace02(glm::vec3 v00, glm::vec3 v01)
+    {
+        face* proxy = new face();
+        edge* e1 = new edge();
+        e1->origVec = v00;
+        e1->destVec = v00 + glm::vec3{1.f, 0.f,0.f};
+        e1->l_face = proxy;
+        edge* e2 = new edge();
+        e2->origVec = v00 + glm::vec3{1.f, 0.f,0.f};
+        e2->destVec = v01;
+        e2->l_face = proxy;
+        edge* e3 = new edge();
+        e3->origVec = v01;
+        e3->destVec = v00;
+        e3->l_face = proxy;
+
+        proxy->e0 = *e1;
+        proxy->e1 = *e2;
+        proxy->e2 = *e3;
+
+        return proxy;
+    }
+
+    glm::vec3 findVertexWithSmallestAngleBetweenFaces(edge e, face f, std::vector<Vertex> vecList)
+    {
+        float smallestAngle = -1.1f;
+        float closestDistance = 999999999.9f;
+        glm::vec3 vWithSmallestAngle;
+        glm::vec3 normal = f.normal();
+        std::map<float, std::vector<glm::vec3>> angleMap;
+        for(Vertex v : vecList)
+        {
+            edge te0 = e;
+            edge te1;
+            te1.origVec = e.destVec;
+            te1.destVec = v.pos;
+            edge te2;
+            te2.origVec = v.pos;
+            te2.destVec = e.destVec;
+            face testFace{te0, te1, te2};
+            
+            if(!(f == testFace))
+            {
+                float cos = getAngle(normal, -testFace.normal());
+                if(smallestAngle <= cos) //is that right?
+                {
+                    smallestAngle = cos;
+                    vWithSmallestAngle = v.pos;
+
+                    if(angleMap.count(smallestAngle))
+                    {
+                        angleMap[smallestAngle].push_back(v.pos);
+                    }
+                    else
+                    {
+                        std::vector<glm::vec3> newV{v.pos};
+                        angleMap.emplace(smallestAngle,newV);
+                    }
+                }
+            }
+            
+            //std::cout << "Test Normal: " << testFace.normal().x << " " << testFace.normal().y << " " << testFace.normal().z << std::endl;
+            //std::cout << "ANGLE: " << getAngle(normal, -testFace.normal()) << std::endl;
+        }
+
+        for(glm::vec3 v : angleMap[smallestAngle])
+        {
+            float vDistance = getDistance(normal, v);
+            if(vDistance < closestDistance)
+            {
+                closestDistance = vDistance;
+                vWithSmallestAngle = v;
+            }
+        }
+
+        return vWithSmallestAngle;
+    }
+
+    float getDistance(glm::vec3 A, glm::vec3 B)
+    {
+        glm::vec3 C = A - B;
+        return sqrt((C.x * C.x) + (C.y * C.y) + (C.z * C.z));
+    }
+
+    float getAngle(glm::vec3 A, glm::vec3 B) //this might need orientation
+    {
+        //A.B=|A||B|cosθ
+        const float dot = (A.x * B.x) + (A.y * B.y) + (A.z * B.z);
+        const float scalar = sqrt((A.x * A.x) + (A.y * A.y) + (A.z * A.z)) * sqrt((B.x * B.x) + (B.y * B.y) + (B.z * B.z));
+        if(scalar == 0.f)
+        {
+            return 0;
+        }
+        return dot/scalar;
     }
 };
 
