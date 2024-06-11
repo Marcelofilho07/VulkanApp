@@ -51,12 +51,6 @@ struct Vertex {
 	}
 };
 
-struct vPos
-{
-	glm::vec3 pos;
-	int index;
-};
-
 struct edge
 {
 	glm::vec3 origVec;
@@ -69,44 +63,36 @@ struct edge
 
 	face* l_face;
 	face* r_face;
-
+	int index;
 	bool operator==(const edge& other) const {
 		return ((origVec == other.origVec || origVec == other.destVec) &&
 			(destVec == other.destVec || destVec == other.origVec));
 	}
-	
-	// bool operator==(const edge& other) const {
-	// 	return (origVec == other.origVec && destVec == other.origVec);
-	// }
 };
 
 struct face
 {
-	edge e0; //v0 -> v1
-	edge e1; //v1 -> v2
-	edge e2; //v2 -> v0
-
+	edge* e0;
+	edge* e1;
+	edge* e2;
+	int index;
+	
+	bool e0R = false;
+	bool e1R = false;
+	bool e2R = false;
+	
 	glm::vec3 normal()
 	{
-		/*
-		* 	Set Vector U to (Triangle.p2 minus Triangle.p1)
-			Set Vector V to (Triangle.p3 minus Triangle.p1)
-
-			Set Normal.x to (multiply U.y by V.z) minus (multiply U.z by V.y)
-			Set Normal.y to (multiply U.z by V.x) minus (multiply U.x by V.z)
-			Set Normal.z to (multiply U.x by V.y) minus (multiply U.y by V.x)
-
-		 */
-		glm::vec3 U = (e0.destVec - e0.origVec);
-		glm::vec3 V = (e1.destVec - e0.origVec);
+		glm::vec3 U = (e0->destVec - e0->origVec);
+		glm::vec3 V = (e1->destVec - e0->origVec);
 		
-		return {(U.y * V.z) - (U.z * V.y), (U.z * V.x) - (U.x * V.z),(U.x * V.y) - (U.y * V.x)};
+		return {-((U.y * V.z) - (U.z * V.y)), -((U.z * V.x) - (U.x * V.z)),-((U.x * V.y) - (U.y * V.x))};
 	}
 	
 	bool operator==(const face& other) const {
-		return ((e0.origVec == other.e0.origVec || e0.origVec == other.e1.origVec || e0.origVec == other.e2.origVec) &&
-			(e1.origVec == other.e0.origVec ||	e1.origVec == other.e1.origVec || e1.origVec == other.e2.origVec) &&
-			(e2.origVec == other.e0.origVec ||	e2.origVec == other.e1.origVec || e2.origVec == other.e2.origVec));
+		return ((e0->origVec == other.e0->origVec || e0->origVec == other.e1->origVec || e0->origVec == other.e2->origVec) &&
+			(e1->origVec == other.e0->origVec ||	e1->origVec == other.e1->origVec || e1->origVec == other.e2->origVec) &&
+			(e2->origVec == other.e0->origVec ||	e2->origVec == other.e1->origVec || e2->origVec == other.e2->origVec));
 	}
 };
 
@@ -114,14 +100,17 @@ namespace std
 {
 	template<> struct hash<edge> {
 		size_t operator()(edge const& vertex) const {
-						return ((hash<float>()(vertex.origVec.x + vertex.destVec.x) ^ (hash<float>()(vertex.origVec.y + vertex.destVec.y) << 1) >> 1) ^ hash<float>()(vertex.origVec.z + vertex.destVec.z) << 1);// ^ (hash<float>()(vertex.e0.origVec.y) << 1)) >> 1)^ (hash<float>()(vertex.e0.origVec.z) << 1);
-
+						return ((hash<float>()(vertex.origVec.x + vertex.destVec.x) ^
+							(hash<float>()(vertex.origVec.y + vertex.destVec.y) << 1) >> 1) ^
+							hash<float>()(vertex.origVec.z + vertex.destVec.z) << 1);
 		}
 	};
     
 	template<> struct hash<face> {
 		size_t operator()(face const& vertex) const {
-			return ((hash<float>()(vertex.e0.origVec.x + vertex.e1.origVec.x + vertex.e2.origVec.x) ^ (hash<float>()(vertex.e0.origVec.y + vertex.e1.origVec.y + vertex.e2.origVec.y) << 1) >> 1) ^ hash<float>()(vertex.e0.origVec.z + vertex.e1.origVec.z + vertex.e2.origVec.z) << 1);// ^ (hash<float>()(vertex.e0.origVec.y) << 1)) >> 1)^ (hash<float>()(vertex.e0.origVec.z) << 1);
+			return ((hash<float>()(vertex.e0->origVec.x + vertex.e1->origVec.x + vertex.e2->origVec.x) ^
+				(hash<float>()(vertex.e0->origVec.y + vertex.e1->origVec.y + vertex.e2->origVec.y) << 1) >> 1) ^
+				hash<float>()(vertex.e0->origVec.z + vertex.e1->origVec.z + vertex.e2->origVec.z) << 1);
 		}
 	};
 }
@@ -129,22 +118,20 @@ namespace std
 class WingedEdge
 {
 public:
-	void addEdge(edge e);
-	void addVertex(glm::vec3 v);
-	void addFace(face f);
-
-	std::unordered_set<face> getFaces(){return faces;}
-
 	face* genFace(glm::vec3 v00, glm::vec3 v01, glm::vec3 v02);
-
-	void printFace(face f);
 	
-	std::unordered_set<edge> edges{};
+	void printFace(face f);
+	void printEdges();
+	void printWingedEdge();
+	
 	std::unordered_set<glm::vec3> vertices{};
+	std::unordered_set<edge> edges{};
 	std::unordered_set<face> faces{};
 
 	std::list<face> listFaces{};
+	std::vector<edge*> vectorOLFEdges{};
 
 	std::vector<Vertex> verticesVec{};
 	std::unordered_map<glm::vec3, uint32_t> uniqueVertices{};
+
 };
