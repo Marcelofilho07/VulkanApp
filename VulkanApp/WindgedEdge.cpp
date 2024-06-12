@@ -130,6 +130,85 @@ face* WingedEdge::genFace(glm::vec3 v00, glm::vec3 v01, glm::vec3 v02)
 	return newFace;
 }
 
+face* WingedEdge::genFace(std::vector<glm::vec3> vVertices)
+{
+	float r = 1.f;
+	float g = 0.f;
+	float b = 0.f;
+	for(auto v : vVertices)
+	{
+		if(vertices.count(v) == 0)
+		{
+			vertices.insert(v);
+			Vertex newV{};
+			newV.pos = v;
+			newV.color = {r,g,b};
+			newV.texCoord = {0.f,0.f};
+			verticesVec.push_back(newV);
+			uniqueVertices[newV.pos] = static_cast<uint32_t>(verticesVec.size());
+		}
+		r -= 0.5f;
+		g += 0.25f;
+		b += 0.5f;
+	}
+	
+	face* newFace = new face();
+	for(auto i = vVertices.begin(); i != vVertices.end(); ++i)
+	{
+		edge* e0 = new edge();
+		e0->origVec = *i;
+		e0->destVec = *vVertices.begin();
+		if(i + 1 != vVertices.end())
+		{
+			e0->destVec = *(i + 1);
+		}
+		
+		e0->index = static_cast<int>(edges.size());
+		if(edges.count(*e0))
+		{
+			for(auto olE : vectorOLFEdges)
+			{
+				if(*olE == *e0)
+				{
+					olE->r_face = newFace;
+					if(e0->origVec == olE->destVec)
+					{
+						newFace->vIsReversed.push_back(true);
+					}
+					else
+					{
+						newFace->vIsReversed.push_back(false);
+					}
+					delete e0;
+					e0 = olE;
+				}
+			}
+		}
+		else
+		{
+			e0->l_face = newFace;
+			edges.insert(*e0);
+			vectorOLFEdges.push_back(e0);
+			newFace->vIsReversed.push_back(false);
+		}
+
+		newFace->vEdges.push_back(e0);
+	}
+	
+	if(faces.count(*newFace) == 0)
+	{
+		newFace->index = static_cast<int>(faces.size());
+		listFaces.push_back(*newFace);
+		faces.insert(*newFace);
+	}
+	else
+	{
+		delete newFace;
+	}
+
+	return newFace;
+}
+
 void WingedEdge::printFace(face f)
 {
 	std::cout << "------ PRINTING FACE -----" << std::endl;
@@ -138,6 +217,27 @@ void WingedEdge::printFace(face f)
 	std::cout << "v1: x: " << f.e1->origVec.x << " y: " << f.e1->origVec.y << " z: " << f.e1->origVec.z << std::endl;
 	std::cout << "v2: x: " << f.e2->origVec.x << " y: " << f.e2->origVec.y << " z: " << f.e2->origVec.z << std::endl;
 }
+
+
+void WingedEdge::printFacePrototype(face f)
+{
+	std::cout << "------ PRINTING FACE -----" << std::endl;
+	std::cout << "INDEX: " << f.index << " Has R: " << (f.e0R || f.e1R || f.e2R ) << std::endl;
+	uint32_t edgeIndex = 0;
+	for(auto e : f.vEdges)
+	{
+		if(f.vIsReversed[edgeIndex])
+		{
+			std::cout << "v" << edgeIndex << " ->  x: " << e->destVec.x << " y: " << e->destVec.y << " z: " << e->destVec.z << std::endl;
+		}
+		else
+		{
+			std::cout << "v" << edgeIndex << " ->  x: " << e->origVec.x << " y: " << e->origVec.y << " z: " << e->origVec.z << std::endl;
+		}
+		++edgeIndex;
+	}
+}
+
 
 void WingedEdge::printEdges()
 {

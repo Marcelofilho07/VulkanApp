@@ -104,8 +104,8 @@ private:
 
     const std::string TEXTURE_PATH = "textures/viking_room/viking_room.png";
     //const std::string MODEL_PATH = "models/Shapes/tetrahedron2.obj";
-    //const std::string MODEL_PATH = "models/Shapes/icosaedro.obj";
-    const std::string MODEL_PATH = "models/Shapes/hexahedron.obj";
+    const std::string MODEL_PATH = "models/Shapes/icosaedro.obj";
+    //const std::string MODEL_PATH = "models/Shapes/hexahedron.obj";
     //const std::string MODEL_PATH = "models/backpack/backpack.obj";
     //const std::string MODEL_PATH = "models/Shapes/octahedron.obj";
     //const std::string MODEL_PATH = "models/viking_room/viking_room.obj";
@@ -320,14 +320,14 @@ private:
         }
 
         verticesOriginal = vertices;
-        /*verticesOriginal.push_back(Vertex{glm::vec3{0.f,0.f,0.f},glm::vec3{1.f,1.f,1.f},glm::vec2{0.f,0.f}});
-        verticesOriginal.push_back(Vertex{glm::vec3{0.3f,0.3f,0.3f},glm::vec3{1.f,1.f,1.f},glm::vec2{0.f,0.f}});
-        verticesOriginal.push_back(Vertex{glm::vec3{-0.3f,-0.3f,-0.3f},glm::vec3{1.f,1.f,1.f},glm::vec2{0.f,0.f}});
+        //verticesOriginal.push_back(Vertex{glm::vec3{0.f,0.f,0.f},glm::vec3{1.f,1.f,1.f},glm::vec2{0.f,0.f}});
+        //verticesOriginal.push_back(Vertex{glm::vec3{0.3f,0.3f,0.3f},glm::vec3{1.f,1.f,1.f},glm::vec2{0.f,0.f}});
+        //verticesOriginal.push_back(Vertex{glm::vec3{-0.3f,-0.3f,-0.3f},glm::vec3{1.f,1.f,1.f},glm::vec2{0.f,0.f}});
         for(auto v : verticesOriginal)
-            std::cout << v.pos.x << ' '<< v.pos.y << ' '<< v.pos.z << std::endl;*/
+            std::cout << v.pos.x << ' '<< v.pos.y << ' '<< v.pos.z << std::endl;
         
         //generateConvexHull();
-        
+        generateConvexHullPrototype();
     }
 
     void createDepthResources()
@@ -1022,8 +1022,8 @@ private:
         rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
         rasterizer.depthClampEnable = VK_FALSE;
         rasterizer.rasterizerDiscardEnable = VK_FALSE;
-        //rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-        rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+        rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+        //rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
         //rasterizer.polygonMode = VK_POLYGON_MODE_POINT;
         rasterizer.lineWidth = 1.0f; 
         rasterizer.cullMode = VK_CULL_MODE_NONE;
@@ -1653,7 +1653,8 @@ private:
         if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && canClickStep)
         {
             canClickStep = false;
-            convexHullStep();
+            //convexHullStep();
+            convexHullStepPrototype();
         }
         if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS)
         {
@@ -1845,6 +1846,18 @@ private:
         we.genFace(v1, secondConvexHullVertex, thirdConvexHullVertex);
     }
 
+    void findFirstFacePrototype(glm::vec3 v1)
+    {
+        face proxyFace  = *genProxyFace(v1);
+        glm::vec3 secondConvexHullVertex = findVertexWithSmallestAngleBetweenFaces(*proxyFace.e0, proxyFace, verticesOriginal);
+        
+        face proxyFace01  = *genProxyFace02(v1, secondConvexHullVertex);
+        glm::vec3 thirdConvexHullVertex = findVertexWithSmallestAngleBetweenFaces(*proxyFace01.e2, proxyFace01, verticesOriginal);
+
+        std::vector<glm::vec3> newFaceVector{v1, secondConvexHullVertex, thirdConvexHullVertex};
+        we.genFace(newFaceVector);
+    }
+
     void generateConvexHull()
     {
         glm::vec3 v1 = findLowestPoint(verticesOriginal);
@@ -1858,6 +1871,27 @@ private:
             newIndices.push_back(we.uniqueVertices[f.e0->origVec] - 1);
             newIndices.push_back(we.uniqueVertices[f.e1->origVec] - 1);
             newIndices.push_back(we.uniqueVertices[f.e2->origVec] - 1);
+        }
+        indices.clear();
+        indices = newIndices;
+        listIterator = we.listFaces.begin();
+    }
+
+    
+    void generateConvexHullPrototype()
+    {
+        glm::vec3 v1 = findLowestPoint(verticesOriginal);
+        
+        findFirstFacePrototype(v1);
+        
+        std::vector<uint32_t> newIndices{};
+        vertices = we.verticesVec;
+        for(auto f : we.faces)
+        {
+            for(auto e : f.vEdges)
+            {
+                newIndices.push_back(we.uniqueVertices[e->origVec] - 1);
+            }
         }
         indices.clear();
         indices = newIndices;
@@ -1956,6 +1990,68 @@ private:
         createUniformBuffers();
     }
 
+    void convexHullStepPrototype()
+    {
+        if(listIterator == we.listFaces.end())
+            return;
+        auto f = *listIterator;
+        we.printFacePrototype(f); 
+        int index = 0;
+        for(auto edgeI = (listIterator->vEdges.begin()); edgeI != listIterator->vEdges.end(); ++edgeI, ++index)
+        {
+            auto e = *edgeI;
+            if(e->r_face == nullptr)
+            {
+                const glm::vec3 nextPoint00 = findVertexWithSmallestAngleBetweenFacesPrototype(*e, f, verticesOriginal);
+                if(f.vIsReversed[index])
+                {
+                    std::vector<glm::vec3> newFaceVertices{nextPoint00,e->destVec, e->origVec};
+                    we.genFace(newFaceVertices);
+                }
+                else
+                {
+                    std::vector<glm::vec3> newFaceVertices{nextPoint00, e->origVec, e->destVec};
+                    we.genFace(newFaceVertices);
+                }
+            }
+        }
+        
+        //we.printEdges();
+        ++listIterator;
+        std::vector<uint32_t> newIndices{};
+        vertices = we.verticesVec;
+        for(auto f : we.faces)
+        {
+            int edgesIndex = 0;
+            for(auto e : f.vEdges)
+            {
+                if(f.vIsReversed[edgesIndex])
+                {
+                    newIndices.push_back(we.uniqueVertices[e->destVec] - 1);
+                }
+                else
+                {
+                    newIndices.push_back(we.uniqueVertices[e->origVec] - 1);
+                }
+                ++edgesIndex;
+            }
+        }
+        indices.clear();
+        indices = newIndices;
+        
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            vkDestroyBuffer(device, uniformBuffers[i], nullptr);
+            vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+        }
+        vkDestroyBuffer(device, indexBuffer, nullptr);
+        vkFreeMemory(device, indexBufferMemory, nullptr);
+        vkDestroyBuffer(device, vertexBuffer, nullptr);
+        vkFreeMemory(device, vertexBufferMemory, nullptr);
+        createVertexBuffer();
+        createIndexBuffer();
+        createUniformBuffers();
+    }
+
     static glm::vec3 findLowestPoint(std::vector<Vertex>& vertexList)
     {
         float lowest = vertexList[0].pos.y;
@@ -1970,6 +2066,62 @@ private:
         }
 
         return vertexToReturn;
+    }
+    
+    glm::vec3 findVertexWithSmallestAngleBetweenFacesPrototype(edge& e, face& f, std::vector<Vertex>& vecList)
+    {
+        float maxCos = -1.1f;
+        float closestDistance = 999999999.9f;
+        glm::vec3 vWithSmallestAngle;
+        glm::vec3 normal = f.normalPrototype();
+        std::map<float, std::vector<glm::vec3>> angleMap;
+        for(Vertex v : vecList)
+        {
+            if((v.pos != e.origVec) && (v.pos != e.destVec))
+            {
+                edge te0{};
+                te0.origVec = e.destVec;
+                te0.destVec = e.origVec;
+                edge te1{};
+                te1.origVec = e.origVec;
+                te1.destVec = v.pos;
+                edge te2{};
+                te2.origVec = v.pos;
+                te2.destVec = e.destVec;
+                face testFace{&te0, &te1, &te2, -1};
+                float cos = getAngle(normal, testFace.normal());
+                if(maxCos <= cos)
+                {
+                    maxCos = cos;
+                    vWithSmallestAngle = v.pos;
+
+                    if(angleMap.count(maxCos))
+                    {
+                        angleMap[maxCos].push_back(v.pos);
+                    }
+                    else
+                    {
+                        std::vector<glm::vec3> newV{v.pos};
+                        angleMap.emplace(maxCos,newV);
+                    }
+                }
+            }
+        }
+
+        for(glm::vec3 v : angleMap[maxCos])
+        {
+            if(angleMap[maxCos].size() > 1)
+            {
+                float vDistance = getDistance(normal, v);
+                if(vDistance < closestDistance)
+                {
+                    closestDistance = vDistance;
+                    vWithSmallestAngle = v;
+                }
+            }
+        }
+
+        return vWithSmallestAngle;
     }
 
     glm::vec3 findVertexWithSmallestAngleBetweenFaces(edge e, face f, std::vector<Vertex> vecList)
@@ -1993,25 +2145,22 @@ private:
                 te2.origVec = v.pos;
                 te2.destVec = e.destVec;
                 face testFace{&te0, &te1, &te2, -1};
-                //if(!(f == testFace))
-                //{
-                    float cos = getAngle(normal, testFace.normal());
-                    if(maxCos <= cos)
-                    {
-                        maxCos = cos;
-                        vWithSmallestAngle = v.pos;
+                float cos = getAngle(normal, testFace.normal());
+                if(maxCos <= cos)
+                {
+                    maxCos = cos;
+                    vWithSmallestAngle = v.pos;
 
-                        if(angleMap.count(maxCos))
-                        {
-                            angleMap[maxCos].push_back(v.pos);
-                        }
-                        else
-                        {
-                            std::vector<glm::vec3> newV{v.pos};
-                            angleMap.emplace(maxCos,newV);
-                        }
+                    if(angleMap.count(maxCos))
+                    {
+                        angleMap[maxCos].push_back(v.pos);
                     }
-                //}
+                    else
+                    {
+                        std::vector<glm::vec3> newV{v.pos};
+                        angleMap.emplace(maxCos,newV);
+                    }
+                }
             }
         }
 
